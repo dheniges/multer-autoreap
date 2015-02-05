@@ -1,11 +1,11 @@
 var fs = require('fs'),
-	  util = require('util'),
-	  finished = require('finished'),
-	  debug = require('debug')('multer-autoreap:middleware');
+    util = require('util'),
+    finished = require('finished'),
+    debug = require('debug')('multer-autoreap:middleware');
 
 
 var defaults = {
-	reapOnError: true
+  reapOnError: true
 };
 
 var options = Object.create(defaults);
@@ -16,51 +16,53 @@ var options = Object.create(defaults);
 // or delete the req.files[key] before the response end.
 module.exports = function(req, res, next) {
 
-	var reapFiles = function reapFiles(err) {
-		var file;
-		if (typeof req.files === "object") {
-			for(var key in req.files) {
-				if (req.files.hasOwnProperty(key)) {
-					file = req.files[key];
-					if (err && (options && !options.reapOnError)) {
-						debug('skipped auto removal of %s - please manually deprecate.',  file.path);
-						continue;
-					}
-					delete req.files[key]; // avoids stating previously reaped files
-					fs.stat(file.path, function(err, stats) {
-						if (!err && stats.isFile()) {
-							fs.unlink(file.path);
-							debug('removed %s', file.path);
-							res.emit('autoreap', file);
-						}
-					});
-				}
-			}
-		}
-	};
+  var reapFiles = function reapFiles(err) {
+    var file;
+    if (typeof req.files === "object") {
+      for(var key in req.files) {
+        if (req.files.hasOwnProperty(key)) {
+          file = req.files[key];
+          if (err && (options && !options.reapOnError)) {
+            debug('skipped auto removal of %s - please manually deprecate.',  file.path);
+            continue;
+          }
+          delete req.files[key]; // avoids stating previously reaped files
+          fs.stat(file.path, function(err, stats) {
+            if (!err && stats.isFile()) {
+              fs.unlink(file.path, function(err) {
+                throw err;
+              });
+              debug('removed %s', file.path);
+              res.emit('autoreap', file);
+            }
+          });
+        }
+      }
+    }
+  };
 
-	res.on('error', function(err) {
-		reapFiles(err);
-	});
+  res.on('error', function(err) {
+    reapFiles(err);
+  });
 
-	finished(res, reapFiles);
-	next();
+  finished(res, reapFiles);
+  next();
 
 };
 
 
 Object.defineProperty(module.exports, 'options', {
-	enumerable: true,
-	set: function(obj) {
-		obj = new Object(obj);
-		if (obj instanceof Array) {
-			return options;
-		}
-		return util._extend(options, obj);
-	},
-	get: function() {
-		return options;
-	}
+  enumerable: true,
+  set: function(obj) {
+    obj = new Object(obj);
+    if (obj instanceof Array) {
+      return options;
+    }
+    return util._extend(options, obj);
+  },
+  get: function() {
+    return options;
+  }
 });
 
 module.exports.options = util._extend(options, defaults);
