@@ -16,30 +16,30 @@ var options = Object.create(defaults);
 // or delete the req.files[key] before the response end.
 module.exports = function(req, res, next) {
 
-  var reapFiles = function reapFiles(err) {
-    var file;
-    if (typeof req.files === "object") {
-      for(var key in req.files) {
-        if (req.files.hasOwnProperty(key)) {
-          file = req.files[key];
-          if (err && (options && !options.reapOnError)) {
-            debug('skipped auto removal of %s - please manually deprecate.',  file.path);
-            continue;
-          }
-          delete req.files[key]; // avoids stating previously reaped files
-          fs.stat(file.path, function(err, stats) {
-            if (!err && stats.isFile()) {
-              fs.unlink(file.path, function(err) {
-                throw err;
-              });
-              debug('removed %s', file.path);
-              res.emit('autoreap', file);
-            }
-          });
-        }
-      }
-    }
-  };
+	var reapFiles = function reapFiles(err) {
+		var file;
+		if (typeof req.files === "object") {
+			for(var key in req.files) {
+				if (req.files.hasOwnProperty(key)) {
+					file = req.files[key];
+					if (err && (options && !options.reapOnError)) {
+						debug('skipped auto removal of %s - please manually deprecate.',  file.path);
+						continue;
+					}
+					delete req.files[key]; // avoids stating previously reaped files
+					fs.stat(file.path, function(err, stats) {
+						if (!err && stats.isFile()) {
+							fs.unlink(file.path, function(err) {
+								if (err) throw err;
+							});
+							debug('removed %s', file.path);
+							res.emit('autoreap', file);
+						}
+					});
+				}
+			}
+		}
+	};
 
   res.on('error', function(err) {
     reapFiles(err);
